@@ -15,7 +15,7 @@ setup(
     author="Juan Knebel",
     author_email="juanknebel@gmail.com",
     license="MIT",
-    packages=["PyLyrics"],
+    packages=["py_lyrics_rock_ar"],
     url="https://github.com/juanknebel/PyLyricsRockAr",
     install_requires=[
         "beautifulsoup4",

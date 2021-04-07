@@ -7,68 +7,74 @@ ROOT_URL = "https://rock.com.ar"
 
 
 class Track(object):
-    def __init__(self, trackName, link, album):
-        self.name = trackName
-        self.album = album
-        self.url = link
+    def __init__(self, track_name, link, album):
+        self._track_name = track_name
+        self._album = album
+        self._link = link
+        self._lyrics = None
 
     def link(self):
-        return self.url
+        return self._link
 
     def __repr__(self):
-        return self.name
+        return self._track_name
 
-    def getLyrics(self):
-        return PyLyrics.getLyrics(self)
+    def lyrics(self):
+        if self._lyrics is None:
+            self._lyrics = PyLyricsRockAr.get_lyrics(self)
+        return self._lyrics
 
 
 class Artist(object):
     def __init__(self, name, link):
-        self.name = name
-        self.url = link
+        self._name = name
+        self._link = link
+        self._albums = None
 
     def link(self):
-        return self.url
+        return self._link
 
-    def getAlbums(self):
-        return PyLyrics.getAlbums(self)
+    def albums(self):
+        if self._albums is None:
+            self._albums = PyLyricsRockAr.get_albums(self)
+        return self._albums
 
     def __repr__(self):
-        return self.name
+        return self._name
 
 
 class Album(object):
-    def __init__(self, name, year, link, singer):
-        self.year = year
-        self.name = name
-        self.url = link
-        self.singer = singer
+    def __init__(self, name, year, link, artist):
+        self._year = year
+        self._name = name
+        self._link = link
+        self._artist = artist
+        self._tracks = None
 
     def link(self):
-        return self.url
+        return self._link
 
     def __repr__(self):
-        if sys.version_info[0] == 2:
-            return self.name.encode("utf-8", "replace")
-        return self.name
+        return self._name
 
     def artist(self):
-        return self.singer
+        return self._artist
 
     def tracks(self):
-        return PyLyrics.getTracks(self)
+        if self._tracks is None:
+            self._tracks = PyLyricsRockAr.get_tracks(self)
+        return self._tracks
 
 
-class PyLyrics:
+class PyLyricsRockAr:
     @staticmethod
-    def getAlbums(singer):
-        url = f"{singer.link()}/discos"
+    def get_albums(artist):
+        url = f"{artist.link()}/discos"
         albums_response = BeautifulSoup(
             requests.get(url).text, features="html.parser"
         )
 
         main_body = albums_response.find("div", "post-content-text")
-        artist = main_body.find("h1").text
 
         discography = (
             main_body.find("div", "comments")
@@ -100,7 +106,7 @@ class PyLyrics:
         return albums
 
     @staticmethod
-    def getTracks(album):
+    def get_tracks(album):
         tracks_response = BeautifulSoup(
             requests.get(album.link()).text, features="html.parser"
         )
@@ -119,7 +125,7 @@ class PyLyrics:
         return songs
 
     @staticmethod
-    def getLyrics(track):
+    def get_lyrics(track):
         url = ROOT_URL + track.link()
         lyrics_response = BeautifulSoup(
             requests.get(url).text, features="html.parser"
@@ -133,19 +139,19 @@ class PyLyrics:
         return lyrics_body.text.strip()
 
     @staticmethod
-    def getArtist(name):
+    def get_artist(name):
         url = ROOT_URL + "/artistas/177"
         return Artist(name, url)
 
 
 def main():
-    artist = PyLyrics.getArtist("Charly Garcia")
+    artist = PyLyricsRockAr.get_artist("Charly Garcia")
     # print(artist)
-    albums = PyLyrics.getAlbums(artist)
+    albums = PyLyricsRockAr.get_albums(artist)
     # print(albums)
-    tracks = PyLyrics.getTracks(albums[-1])
+    tracks = PyLyricsRockAr.get_tracks(albums[-1])
     # print(tracks)
-    lyric = PyLyrics.getLyrics(tracks[3])
+    lyric = PyLyricsRockAr.get_lyrics(tracks[3])
     print(lyric)
 
 
