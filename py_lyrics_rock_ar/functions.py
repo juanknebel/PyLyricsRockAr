@@ -3,9 +3,6 @@ from bs4 import BeautifulSoup, Comment, NavigableString
 import sys, codecs, json
 
 
-ROOT_URL = "https://rock.com.ar"
-
-
 class Track(object):
     def __init__(self, track_name, link, album):
         self._track_name = track_name
@@ -24,6 +21,9 @@ class Track(object):
             self._lyrics = PyLyricsRockAr.get_lyrics(self)
         return self._lyrics
 
+    def name(self):
+        return self._track_name
+
 
 class Artist(object):
     def __init__(self, name, link):
@@ -40,6 +40,9 @@ class Artist(object):
         return self._albums
 
     def __repr__(self):
+        return self._name
+
+    def name(self):
         return self._name
 
 
@@ -65,8 +68,28 @@ class Album(object):
             self._tracks = PyLyricsRockAr.get_tracks(self)
         return self._tracks
 
+    def name(self):
+        return self._name
+
+    def year(self):
+        return self._year
+
 
 class PyLyricsRockAr:
+    ROOT_URL = "https://rock.com.ar"
+
+    _available_artist = {
+        "Charly Garcia": 177,
+        "Luis Alberto Spinetta": 73,
+        "Soda Stereo": 200,
+        "Seru Giran": 260,
+        "Sui Generis": 262,
+        "Miguel Abuelo": 39,
+        "Los Abuelos de la Nada": 38,
+        "Pacha Santa": 17775,
+        "La Maquina de Hacer Pajaros": 361,
+    }
+
     @staticmethod
     def get_albums(artist):
         url = f"{artist.link()}/discos"
@@ -90,7 +113,7 @@ class PyLyricsRockAr:
                     "h3", "comments__list-item-title"
                 ).find("a", href=True)
                 album_name = tag_album.text
-                album_url = f"{ROOT_URL + tag_album['href']}"
+                album_url = f"{PyLyricsRockAr.ROOT_URL + tag_album['href']}"
                 album_year = int(
                     li_album.find(
                         "span", "comments__list-item-date"
@@ -126,7 +149,9 @@ class PyLyricsRockAr:
 
     @staticmethod
     def get_lyrics(track):
-        url = ROOT_URL + track.link()
+        if track.link() is None:
+            return None
+        url = PyLyricsRockAr.ROOT_URL + track.link()
         lyrics_response = BeautifulSoup(
             requests.get(url).text, features="html.parser"
         )
@@ -140,20 +165,32 @@ class PyLyricsRockAr:
 
     @staticmethod
     def get_artist(name):
-        url = ROOT_URL + "/artistas/177"
-        return Artist(name, url)
+        try:
+            url = (
+                PyLyricsRockAr.ROOT_URL
+                + "/artistas/"
+                + str(PyLyricsRockAr._available_artist[name])
+            )
+            return Artist(name, url)
+        except KeyError:
+            raise ValueError(f"The artist {name} is not yet mapped.")
+
+    @staticmethod
+    def available_artist():
+        return list(PyLyricsRockAr._available_artist.keys())
 
 
 def main():
     artist = PyLyricsRockAr.get_artist("Charly Garcia")
-    # print(artist)
+    print(artist)
     albums = PyLyricsRockAr.get_albums(artist)
-    # print(albums)
+    print(albums)
     tracks = PyLyricsRockAr.get_tracks(albums[-1])
-    # print(tracks)
+    print(tracks)
     lyric = PyLyricsRockAr.get_lyrics(tracks[3])
     print(lyric)
 
 
 if __name__ == "__main__":
     main()
+    # print(PyLyricsRockAr.available_artist())

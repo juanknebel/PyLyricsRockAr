@@ -22,11 +22,12 @@ setup(
         "requests",
     ],
     classifiers=[
-        "Development Status :: 5 - Production/Stable",
+        "Development Status :: 3 - Alpha",
         "Topic :: Internet",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
+        "Environment :: Console",
     ],
     zip_safe=False,
 )

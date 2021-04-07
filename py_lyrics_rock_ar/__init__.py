@@ -1,4 +1,4 @@
-__author__ = "Pradipta"
+__author__ = "Juan Knebel"
 __version__ = "1.0.0"
 
 try:
