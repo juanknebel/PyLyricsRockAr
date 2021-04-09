@@ -43,8 +43,22 @@ def scrap_as_dict():
 
 def scrap_as_dataframes():
     datasets = []
-    # for an_artist in ["La Maquina de Hacer Pajaros"]:
+    index = 1
+    file_artists_scrapped = "./artists_scrapped.txt"
+    artists_scrapped = []
+
+    try:
+        with open(file_artists_scrapped, "r") as file_in:
+            artists_scrapped = file_in.read().splitlines()
+    except FileNotFoundError:
+        pass
+
+    # Add a few waits in the loop in order to not take down the page.
     for an_artist in tqdm.tqdm(PyLyricsRockAr.available_artist()):
+        # Skip the artist that allready scrapped
+        if an_artist in artists_scrapped:
+            continue
+
         artist = PyLyricsRockAr.get_artist(an_artist)
         time.sleep(1)
         albums = PyLyricsRockAr.get_albums(artist)
@@ -65,7 +79,14 @@ def scrap_as_dataframes():
 
             datasets += [lyrics_df]
             time.sleep(1)
-        time.sleep(10) # wait 10 seconds
+
+        # Save a temporary scrap in case the connection resets
+        if index % 10 == 0 and len(datasets) > 0:
+            df_temp = pd.concat(datasets)
+            df_temp.to_csv(f"lyrics_{index}.csv", index=False, sep=";")
+            with open(file_artists_scrapped, "w") as file_out:
+                file_out.writelines("\n".join(list(df_temp.artist.unique())))
+        time.sleep(10)
 
     if datasets == []:
         raise ImportWarning("No lyric to add.")

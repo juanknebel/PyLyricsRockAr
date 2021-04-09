@@ -114,14 +114,15 @@ class PyLyricsRockAr:
 
     @staticmethod
     def get_albums(artist):
-        url = f"{PyLyricsRockAr.ROOT_URL + artist.link()}/discos"
-        albums_response = BeautifulSoup(
-            requests.get(url).text, features="html.parser"
-        )
-        main_body = albums_response.find("div", "post-content-text")
-
         albums = []
+        url = f"{PyLyricsRockAr.ROOT_URL + artist.link()}/discos"
+
         try:
+            albums_response = BeautifulSoup(
+                requests.get(url).text, features="html.parser"
+            )
+            main_body = albums_response.find("div", "post-content-text")
+
             discography = (
                 main_body.find("div", "comments")
                 .find("ul", "comments__list")
@@ -140,19 +141,21 @@ class PyLyricsRockAr:
                 albums += [Album(album_name, album_year, album_url, artist)]
         except Exception as ex:
             logging.info(
-                f"Can't create an album for the artist {artist}. Error: {ex.args[0]}"
+                f"Can't create Tthe albums for the artist {artist}. Error: {ex.args[0]}"
             )
         return albums
 
     @staticmethod
     def get_tracks(album):
-        tracks_response = BeautifulSoup(
-            requests.get(PyLyricsRockAr.ROOT_URL + album.link()).text,
-            features="html.parser",
-        )
-
         songs = []
+        url = PyLyricsRockAr.ROOT_URL + album.link()
+
         try:
+            tracks_response = BeautifulSoup(
+                requests.get(url).text,
+                features="html.parser",
+            )
+
             tracks_body = tracks_response.find("ol", "tracklisting")
             for li_track in tracks_body.find_all("li"):
                 link = None
@@ -171,14 +174,16 @@ class PyLyricsRockAr:
     def get_lyrics(track):
         if track.link() is None:
             return None
-        url = PyLyricsRockAr.ROOT_URL + track.link()
-        lyrics_response = BeautifulSoup(
-            requests.get(url).text, features="html.parser"
-        )
 
         the_lyric = None
-        # Get main lyrics holder
+        url = PyLyricsRockAr.ROOT_URL + track.link()
+
         try:
+            lyrics_response = BeautifulSoup(
+                requests.get(url).text, features="html.parser"
+            )
+
+            # Get main lyrics holder
             lyrics_div = lyrics_response.find("div", "post-content-text")
             lyrics_body = lyrics_div.find("div", {"class": None})
             the_lyric = lyrics_body.text.strip()
