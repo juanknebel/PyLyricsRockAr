@@ -1,6 +1,10 @@
 import requests
 from bs4 import BeautifulSoup, Comment, NavigableString
 import sys, codecs, json
+import logging
+
+
+logging.basicConfig(filename="error.log", level=logging.INFO)
 
 
 class Track(object):
@@ -23,6 +27,9 @@ class Track(object):
 
     def name(self):
         return self._track_name
+
+    def album(self):
+        return self._album
 
 
 class Artist(object):
@@ -75,76 +82,89 @@ class Album(object):
         return self._year
 
 
+def load_artists(file_name):
+    default_artists = dict()
+    try:
+        with open(file_name, "r") as file_in:
+            json_artists = file_in.read()
+            default_artists = json.loads(json_artists)
+    except FileNotFoundError:
+        logging.info(
+            f"The file {file_name} not exist, using the default artists list"
+        )
+        default_artists = {
+            "Charly García": 177,
+            "Luis Alberto Spinetta": 73,
+            "Soda Stereo": 200,
+            "Seru Giran": 260,
+            "Sui Generis": 262,
+            "Miguel Abuelo": 39,
+            "Los Abuelos de la Nada": 38,
+            "Pacha Santa": 17775,
+            "La Máquina de Hacer Pájaros": 361,
+        }
+    finally:
+        return default_artists
+
+
 class PyLyricsRockAr:
     ROOT_URL = "https://rock.com.ar"
-
-    _available_artist = {
-        "Charly Garcia": 177,
-        "Luis Alberto Spinetta": 73,
-        "Soda Stereo": 200,
-        "Seru Giran": 260,
-        "Sui Generis": 262,
-        "Miguel Abuelo": 39,
-        "Los Abuelos de la Nada": 38,
-        "Pacha Santa": 17775,
-        "La Maquina de Hacer Pajaros": 361,
-    }
+    _artist_file_name = "./available_artists.json"
+    _available_artist = load_artists("./available_artists.json")
 
     @staticmethod
     def get_albums(artist):
-        url = f"{artist.link()}/discos"
+        url = f"{PyLyricsRockAr.ROOT_URL + artist.link()}/discos"
         albums_response = BeautifulSoup(
             requests.get(url).text, features="html.parser"
         )
-
         main_body = albums_response.find("div", "post-content-text")
 
-        discography = (
-            main_body.find("div", "comments")
-            .find("ul", "comments__list")
-            .find_all("li")
-        )
-
         albums = []
+        try:
+            discography = (
+                main_body.find("div", "comments")
+                .find("ul", "comments__list")
+                .find_all("li")
+            )
 
-        for li_album in discography:
-            try:
+            for li_album in discography:
                 tag_album = li_album.find(
                     "h3", "comments__list-item-title"
                 ).find("a", href=True)
                 album_name = tag_album.text
-                album_url = f"{PyLyricsRockAr.ROOT_URL + tag_album['href']}"
-                album_year = int(
-                    li_album.find(
-                        "span", "comments__list-item-date"
-                    ).text.split(": ")[1]
-                )
+                album_url = tag_album["href"]
+                album_year = li_album.find(
+                    "span", "comments__list-item-date"
+                ).text.split(": ")[1]
                 albums += [Album(album_name, album_year, album_url, artist)]
-            except:
-                pass
-
-        if albums == []:
-            raise ValueError("Unknown Artist Name given")
-            return None
+        except Exception as ex:
+            logging.info(
+                f"Can't create an album for the artist {artist}. Error: {ex.args[0]}"
+            )
         return albums
 
     @staticmethod
     def get_tracks(album):
         tracks_response = BeautifulSoup(
-            requests.get(album.link()).text, features="html.parser"
+            requests.get(PyLyricsRockAr.ROOT_URL + album.link()).text,
+            features="html.parser",
         )
 
-        tracks_body = tracks_response.find("ol", "tracklisting")
-
         songs = []
-        for li_track in tracks_body.find_all("li"):
-            link = None
-            name = li_track.text.strip()
-            if li_track.find("a", href=True) is not None:
-                link = li_track.find("a", href=True)["href"]
+        try:
+            tracks_body = tracks_response.find("ol", "tracklisting")
+            for li_track in tracks_body.find_all("li"):
+                link = None
+                name = li_track.text.strip()
+                if li_track.find("a", href=True) is not None:
+                    link = li_track.find("a", href=True)["href"]
 
-            songs += [Track(name, link, album)]
-
+                songs += [Track(name, link, album)]
+        except Exception as ex:
+            logging.info(
+                f"Can't reach the tracks of {album.artist()} - {album} doesn't have any track. Error: {ex.args[0]}"
+            )
         return songs
 
     @staticmethod
@@ -156,28 +176,70 @@ class PyLyricsRockAr:
             requests.get(url).text, features="html.parser"
         )
 
+        the_lyric = None
         # Get main lyrics holder
-        lyrics_body = lyrics_response.find("div", "post-content-text").find(
-            "div", {"class": None}
-        )
-
-        return lyrics_body.text.strip()
+        try:
+            lyrics_div = lyrics_response.find("div", "post-content-text")
+            lyrics_body = lyrics_div.find("div", {"class": None})
+            the_lyric = lyrics_body.text.strip()
+        except Exception as ex:
+            logging.info(
+                f"Can reach the lyrics {track.album().artist()} - {track.album()} - {track}. Error: {ex.args[0]}"
+            )
+        return the_lyric
 
     @staticmethod
     def get_artist(name):
         try:
-            url = (
-                PyLyricsRockAr.ROOT_URL
-                + "/artistas/"
-                + str(PyLyricsRockAr._available_artist[name])
-            )
+            url = PyLyricsRockAr._available_artist[name]
             return Artist(name, url)
         except KeyError:
-            raise ValueError(f"The artist {name} is not yet mapped.")
+            raise ValueError(
+                f"The artist {name} is not the available artist list."
+            )
 
     @staticmethod
     def available_artist():
+        """
+        Returns all the available artists that you can scrap the info.
+        """
         return list(PyLyricsRockAr._available_artist.keys())
+
+    @staticmethod
+    def get_all_the_artists_links():
+        """
+        This method scrap all the artits names and links and creates a file in your
+        current directory named available_artists.json that hold all the links for
+        all the artists in the website.
+        """
+        PyLyricsRockAr._available_artist = dict()
+        main_response = BeautifulSoup(
+            requests.get(PyLyricsRockAr.ROOT_URL).text, features="html.parser"
+        )
+        abctop = main_response.find("div", "abctop").find_all("a", href=True)
+
+        for an_entry in abctop:
+            search_url = PyLyricsRockAr.ROOT_URL + an_entry["href"]
+            search_body = BeautifulSoup(
+                requests.get(search_url).text, features="html.parser"
+            )
+            artists = (
+                search_body.find("div", "post-content-text")
+                .find("ul", "canciones")
+                .find_all("li")
+            )
+
+            for an_artist in artists:
+                artist_info = an_artist.find("a", href=True)
+                PyLyricsRockAr._available_artist[
+                    artist_info.text.strip()
+                ] = artist_info["href"]
+
+        json_artists = json.dumps(
+            PyLyricsRockAr._available_artist, ensure_ascii=False
+        )
+        with open(PyLyricsRockAr._artist_file_name, "w") as file_out:
+            file_out.write(json_artists)
 
 
 def main():
@@ -192,5 +254,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
-    # print(PyLyricsRockAr.available_artist())
+    # main()
+    # PyLyricsRockAr.get_all_the_artists_links()
+    print(PyLyricsRockAr.available_artist())
