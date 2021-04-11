@@ -4,43 +4,6 @@ import tqdm
 import time
 
 
-def scrap_as_dict():
-    album_by_artist = dict()
-    # {
-    #   artista1: {
-    #       almbum1: {cancion1: letra1, cancion2: letra2},
-    #       almbum2: {cancion3: letra3, cancion4: letra4}},
-    #   artista2: {
-    #       almbum3: {cancion5: letra5, cancion6: letra6},
-    #       almbum4: {cancion7: letra7, cancion8: letra8}}
-    # }
-    for an_artist in PyLyricsRockAr.available_artist():
-        artist = PyLyricsRockAr.get_artist(an_artist)
-        albums = PyLyricsRockAr.get_albums(artist)
-
-        tracks_by_album = dict()
-        # {
-        #   almbum1: {cancion1: letra1, cancion2: letra2},
-        #   almbum2: {cancion3: letra3, cancion4: letra4}
-        # }
-        for an_album in albums:
-            tracks = PyLyricsRockAr.get_tracks(an_album)
-
-            lyrics_by_track = dict()
-            # {cancion1: letra1, cancion2: letra2}
-            for a_track in tracks:
-                lyrics_by_track[a_track.name()] = PyLyricsRockAr.get_lyrics(
-                    a_track
-                )
-
-            tracks_by_album[an_album.name()] = lyrics_by_track
-
-        album_by_artist[artist.name()] = tracks_by_album
-        break
-
-    print(album_by_artist)
-
-
 def scrap_as_dataframes():
     datasets = []
     index = 1
@@ -83,10 +46,11 @@ def scrap_as_dataframes():
         # Save a temporary scrap in case the connection resets
         if index % 10 == 0 and len(datasets) > 0:
             df_temp = pd.concat(datasets)
-            df_temp.to_csv(f"lyrics_{index}.csv", index=False, sep=";")
+            df_temp.to_csv(f"./data/lyrics_{index}.csv", index=False, sep=";")
             with open(file_artists_scrapped, "w") as file_out:
                 file_out.writelines("\n".join(list(df_temp.artist.unique())))
         time.sleep(10)
+        index += 1
 
     if datasets == []:
         raise ImportWarning("No lyric to add.")

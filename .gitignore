@@ -1,2 +1,5 @@
 available_artists.json
 lyrics.csv
+artists_scrapped.txt
+build/
+dist/
